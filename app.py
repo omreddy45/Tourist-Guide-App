@@ -18,7 +18,7 @@ WEATHER_API_KEY = "29ef3caba42f0b316a50b79b38d13023"
 EXCEL_FILE_PATH = "attached_assets/India_Top_Cities_Tourism_and_Food.xlsx"
 
 # Title
-st.title("🇮🇳Indian Cities Explorer")
+st.title("🇮🇳🚩Indian Cities Explorer")
 st.subheader("Discover weather, tourist spots, and food recommendations")
 
 # Initialize session state for data
