@@ -18,7 +18,7 @@ WEATHER_API_KEY = "29ef3caba42f0b316a50b79b38d13023"
 EXCEL_FILE_PATH = "attached_assets/India_Top_Cities_Tourism_and_Food.xlsx"
 
 # Title
-st.title("🇮🇳 Indian Cities Explorer")
+st.title("🇮🇳Indian Cities Explorer")
 st.subheader("Discover weather, tourist spots, and food recommendations")
 
 # Initialize session state for data
@@ -117,7 +117,12 @@ if city_input:
                     st.subheader("🏛️ Top Tourist Places")
                     if recommendations.get('tourist_places'):
                         for place in recommendations['tourist_places']:
-                            st.write(f"• {place}")
+                            col1, col2 = st.columns([8, 1])
+                            with col1:
+                                st.write(f"• {place}")
+                            with col2:
+                                wiki_url = f"https://en.wikipedia.org/wiki/{place.replace(' ', '_')}"
+                                st.markdown(f"[📚]({wiki_url})")
                     else:
                         st.write("No tourist data available for this city.")
 
@@ -125,7 +130,12 @@ if city_input:
                     st.subheader("🍳 Top Breakfast Spots")
                     if recommendations.get('breakfast_spots'):
                         for spot in recommendations['breakfast_spots']:
-                            st.write(f"• {spot}")
+                            col1, col2 = st.columns([8, 1])
+                            with col1:
+                                st.write(f"• {spot}")
+                            with col2:
+                                maps_url = f"https://www.google.com/maps/search/?api=1&query={spot.replace(' ', '+')}+{city_input}"
+                                st.markdown(f"[📍]({maps_url})")
                     else:
                         st.write("No breakfast spot data available for this city.")
 
@@ -133,7 +143,12 @@ if city_input:
                     st.subheader("🍽️ Top Dinner Spots")
                     if recommendations.get('dinner_spots'):
                         for spot in recommendations['dinner_spots']:
-                            st.write(f"• {spot}")
+                            col1, col2 = st.columns([8, 1])
+                            with col1:
+                                st.write(f"• {spot}")
+                            with col2:
+                                maps_url = f"https://www.google.com/maps/search/?api=1&query={spot.replace(' ', '+')}+{city_input}"
+                                st.markdown(f"[📍]({maps_url})")
                     else:
                         st.write("No dinner spot data available for this city.")
             else:
@@ -147,4 +162,6 @@ if city_input:
 
 # Footer
 st.markdown("---")
-st.markdown("Data sources: OpenWeatherMap API and tourism/food data from Excel.")
+st.markdown("📚 Click this icon to explore more about the place on Wikipedia.")
+st.markdown("📍 Click this icon to view the exact location on Google Maps.")
+st.markdown("Data sources: OpenWeatherMap API and tourism/food data from Excel. The 🇮🇳 icon represents India's flag, making it easy to identify this app as an Indian cities information tool.")
