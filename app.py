@@ -4,6 +4,7 @@ import requests
 import os
 from datetime import datetime
 import plotly.graph_objects as go
+import wikipedia
 from utils import load_excel_data, get_weather, get_weather_forecast, get_city_recommendations
 
 # Page Config
@@ -18,7 +19,7 @@ WEATHER_API_KEY = "29ef3caba42f0b316a50b79b38d13023"
 EXCEL_FILE_PATH = "attached_assets/India_Top_Cities_Tourism_and_Food.xlsx"
 
 # Title
-st.title("🇮🇳🚩Indian Cities Explorer")
+st.title("🇮🇳 Indian Cities Explorer")
 st.subheader("Discover weather, tourist spots, and food recommendations")
 
 # Initialize session state for data
@@ -40,7 +41,7 @@ except Exception as e:
     st.session_state.cities_list = []
 
 # City selection
-city_input = st.text_input("Enter an Indian city:", placeholder="e.g., Mumbai, Delhi, Bangalore...")
+city_input = st.text_input("Enter an Indian city:", placeholder="e.g., Mumbai, Pune, Bangalore...")
 
 if city_input:
     # Show weather information
@@ -48,7 +49,6 @@ if city_input:
         weather_data = get_weather(city_input, WEATHER_API_KEY)
 
     if weather_data and 'error' not in weather_data:
-        # Display weather information in a nice card
         col1, col2 = st.columns([1, 2])
 
         with col1:
@@ -69,90 +69,87 @@ if city_input:
 
         st.divider()
 
-        # Get and display forecast
+        # Forecast
         forecast_data = get_weather_forecast(city_input, WEATHER_API_KEY)
-        if forecast_data and 'error' not in forecast_data:
+        if forecast_data and 'list' in forecast_data:
             st.subheader("📈 5-Day Weather Forecast")
-            
-            # Extract forecast data
-            temps = []
-            dates = []
-            for item in forecast_data['list']:
-                dt = datetime.fromtimestamp(item['dt'])
-                if dt.hour == 12:  # Get only noon forecasts
-                    temps.append(item['main']['temp'])
-                    dates.append(dt.strftime('%Y-%m-%d'))
+            temps, dates = [], []
 
-            # Create the graph
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(
-                x=dates,
-                y=temps,
-                mode='lines+markers',
-                name='Temperature',
-                line=dict(color='#FF4B4B', width=2),
-                marker=dict(size=8)
-            ))
-            
-            fig.update_layout(
-                title='Temperature Forecast',
-                xaxis_title='Date',
-                yaxis_title='Temperature (°C)',
-                template='plotly_white'
-            )
-            
-            st.plotly_chart(fig, use_container_width=True)
+            for item in forecast_data['list']:
+                if '12:00:00' in item['dt_txt']:
+                    temps.append(item['main']['temp'])
+                    dates.append(item['dt_txt'].split(" ")[0])
+
+            if temps and dates:
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=dates, y=temps, mode='lines+markers', name='Temp (°C)'))
+                fig.update_layout(title='5-Day Temperature Forecast (12 PM)',
+                                  xaxis_title='Date',
+                                  yaxis_title='Temperature (°C)')
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning("No forecast data found for 12:00 PM.")
+        else:
+            st.error("Forecast data could not be loaded.")
 
         st.divider()
 
-        # Get tourism and food recommendations if data is available
+        # Tourist Places Section
         if st.session_state.data_loaded:
             recommendations = get_city_recommendations(st.session_state.cities_data, city_input)
 
-            if recommendations:
-                # Display recommendations in three columns
-                tourist_col, breakfast_col, dinner_col = st.columns(3)
+            if recommendations and recommendations.get('tourist_places'):
+                st.subheader("🏛️ Tourist Attractions")
 
-                with tourist_col:
-                    st.subheader("🏛️ Top Tourist Places")
-                    if recommendations.get('tourist_places'):
-                        for place in recommendations['tourist_places']:
-                            col1, col2 = st.columns([8, 1])
-                            with col1:
-                                st.write(f"• {place}")
-                            with col2:
-                                wiki_url = f"https://en.wikipedia.org/wiki/{place.replace(' ', '_')}"
-                                st.markdown(f"[📚]({wiki_url})")
-                    else:
-                        st.write("No tourist data available for this city.")
+                tourist_places = recommendations['tourist_places']
+                num_cols = min(len(tourist_places), 4)
+                rows = [tourist_places[i:i + num_cols] for i in range(0, len(tourist_places), num_cols)]
 
-                with breakfast_col:
-                    st.subheader("🍳 Top Breakfast Spots")
-                    if recommendations.get('breakfast_spots'):
-                        for spot in recommendations['breakfast_spots']:
-                            col1, col2 = st.columns([8, 1])
-                            with col1:
-                                st.write(f"• {spot}")
-                            with col2:
-                                maps_url = f"https://www.google.com/maps/search/?api=1&query={spot.replace(' ', '+')}+{city_input}"
-                                st.markdown(f"[📍]({maps_url})")
-                    else:
-                        st.write("No breakfast spot data available for this city.")
+                for row in rows:
+                    cols = st.columns(len(row))
+                    for idx, place in enumerate(row):
+                        with cols[idx]:
+                            st.markdown(f"### {place}")
+                            try:
+                                summary = wikipedia.summary(place + f", {city_input}", sentences=2)
+                                st.write(summary)
+                            except wikipedia.exceptions.DisambiguationError:
+                                st.write("⚠️ Multiple results found. Try a more specific name.")
+                            except wikipedia.exceptions.PageError:
+                                st.write("⚠️ No Wikipedia page found.")
+                            except Exception as e:
+                                st.write("⚠️ Unable to fetch summary.")
 
-                with dinner_col:
-                    st.subheader("🍽️ Top Dinner Spots")
-                    if recommendations.get('dinner_spots'):
-                        for spot in recommendations['dinner_spots']:
-                            col1, col2 = st.columns([8, 1])
-                            with col1:
-                                st.write(f"• {spot}")
-                            with col2:
-                                maps_url = f"https://www.google.com/maps/search/?api=1&query={spot.replace(' ', '+')}+{city_input}"
-                                st.markdown(f"[📍]({maps_url})")
-                    else:
-                        st.write("No dinner spot data available for this city.")
-            else:
-                st.info(f"No tourism or food data found for {city_input}. Try another city name or check spelling.")
+                st.divider()
+
+            # Food Recommendations
+            breakfast_col, dinner_col = st.columns(2)
+
+            with breakfast_col:
+                st.subheader("🍳 Top Breakfast Spots")
+                if recommendations.get('breakfast_spots'):
+                    for spot in recommendations['breakfast_spots']:
+                        col1, col2 = st.columns([8, 1])
+                        with col1:
+                            st.write(f"• {spot}")
+                        with col2:
+                            maps_url = f"https://www.google.com/maps/search/?api=1&query={spot.replace(' ', '+')}+{city_input}"
+                            st.markdown(f"[📍 Map]({maps_url})")
+                else:
+                    st.write("No breakfast spot data available for this city.")
+
+            with dinner_col:
+                st.subheader("🍽️ Top Dinner Spots")
+                if recommendations.get('dinner_spots'):
+                    for spot in recommendations['dinner_spots']:
+                        col1, col2 = st.columns([8, 1])
+                        with col1:
+                            st.write(f"• {spot}")
+                        with col2:
+                            maps_url = f"https://www.google.com/maps/search/?api=1&query={spot.replace(' ', '+')}+{city_input}"
+                            st.markdown(f"[📍 Map]({maps_url})")
+                else:
+                    st.write("No dinner spot data available for this city.")
         else:
             st.info("Tourism and food data is not available. Only weather information is displayed.")
     else:
@@ -162,6 +159,6 @@ if city_input:
 
 # Footer
 st.markdown("---")
-st.markdown("📚 Click this icon to explore more about the place on Wikipedia.")
-st.markdown("📍 Click this icon to view the exact location on Google Maps.")
-st.markdown("Data sources: OpenWeatherMap API and tourism/food data from Excel. The 🇮🇳 icon represents India's flag, making it easy to identify this app as an Indian cities information tool.")
+st.markdown("🔍 Tourist info is powered by Wikipedia summaries.")
+st.markdown("📍 Clickable map links help you navigate easily.")
+st.markdown("Data sources: OpenWeatherMap API and curated tourism/food Excel data.")
